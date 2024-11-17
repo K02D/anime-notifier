@@ -84,16 +84,37 @@ export function AiringAnimeSchedule() {
   };
 
   const formatBroadcastTime = (day: string, time: string, timezone: string) => {
-    if (!day || !time) return "Broadcast time unknown";
-    const date = new Date(`2023-01-01 ${time} ${timezone}`);
-    const options: Intl.DateTimeFormatOptions = {
-      weekday: "long",
-      hour: "numeric",
-      minute: "numeric",
-      timeZone: "America/New_York",
-      timeZoneName: "short",
-    };
-    return date.toLocaleString("en-US", options);
+    if (!day || !time || !timezone) {
+      return "N/A";
+    }
+    const [hours, minutes] = time.split(":").map(Number);
+    let etHours = hours - 14;
+    // Adjust day if time goes into previous day
+    let adjustedDay = day;
+    if (etHours < 0) {
+      etHours += 24; // Normalize hours to 0-23 range
+      // Get previous day
+      const days = [
+        "Sundays",
+        "Mondays",
+        "Tuesdays",
+        "Wednesdays",
+        "Thursdays",
+        "Fridays",
+        "Saturdays",
+      ];
+      const currentDayIndex = days.indexOf(day);
+      const previousDayIndex = (currentDayIndex - 1 + 7) % 7;
+      adjustedDay = days[previousDayIndex];
+    }
+
+    // Format the time to 12-hour format with AM/PM
+    const period = etHours >= 12 ? "PM" : "AM";
+    const hours12 = etHours % 12 || 12; // Convert to 12-hour format
+    const formattedTime = `${hours12}:${minutes
+      .toString()
+      .padStart(2, "0")} ${period}`;
+    return `${adjustedDay}, ${formattedTime} ET`;
   };
 
   if (isLoading) {
