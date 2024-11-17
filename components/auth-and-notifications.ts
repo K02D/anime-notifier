@@ -8,11 +8,13 @@ import {
 import { getFirestore, doc, setDoc, deleteDoc } from "firebase/firestore";
 
 const firebaseConfig = {
-  // Your Firebase configuration here
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  // ... other config options
+  apiKey: "AIzaSyDUkFPheiBPNb7LxSvMpx7qpjd6W3_nZZs",
+  authDomain: "anime-notifier-c015b.firebaseapp.com",
+  projectId: "anime-notifier-c015b",
+  storageBucket: "anime-notifier-c015b.firebasestorage.app",
+  messagingSenderId: "169240596890",
+  appId: "1:169240596890:web:7c05563a02c39606a82a23",
+  measurementId: "G-VYE7S08916",
 };
 
 const app = initializeApp(firebaseConfig);
