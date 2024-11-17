@@ -20,12 +20,48 @@ type Anime = {
   score: number;
 };
 
+const TOKYO_TIMEZONE = "Asia/Tokyo";
+const DAYS_OF_WEEK = [
+  "Sundays",
+  "Mondays",
+  "Tuesdays",
+  "Wednesdays",
+  "Thursdays",
+  "Fridays",
+  "Saturdays",
+];
+
+const getTimezoneOffset = () => {
+  // Get user's timezone
+  const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  // Create a date object for current time
+  const now = new Date();
+
+  // Calculate offset between user's timezone and Tokyo
+  const tokyoOffset = new Date(
+    now.toLocaleString("en-US", { timeZone: TOKYO_TIMEZONE })
+  ).getTime();
+  const userOffset = new Date(
+    now.toLocaleString("en-US", { timeZone: userTimezone })
+  ).getTime();
+
+  // Return difference in hours
+  return (tokyoOffset - userOffset) / (1000 * 60 * 60);
+};
+
 export function AiringAnimeSchedule() {
   const [animeList, setAnimeList] = useState<Anime[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [subscriptions, setSubscriptions] = useState<Set<number>>(new Set());
+  const [userTimezone, setUserTimezone] = useState<string>("");
+
+  useEffect(() => {
+    // Set user's timezone on component mount
+    setUserTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  }, []);
 
   useEffect(() => {
     const fetchAnime = async () => {
@@ -46,12 +82,50 @@ export function AiringAnimeSchedule() {
     fetchAnime();
   }, []);
 
+  const formatBroadcastTime = (day: string, time: string, timezone: string) => {
+    if (!day || !time || !timezone) {
+      return "N/A";
+    }
+
+    try {
+      const [hours, minutes] = time.split(":").map(Number);
+      const offset = getTimezoneOffset();
+
+      // Calculate local time by subtracting the offset
+      let localHours = hours - offset;
+
+      // Adjust day if time crosses day boundary
+      let adjustedDay = day;
+      if (localHours < 0) {
+        localHours += 24;
+        const currentDayIndex = DAYS_OF_WEEK.indexOf(day);
+        const previousDayIndex = (currentDayIndex - 1 + 7) % 7;
+        adjustedDay = DAYS_OF_WEEK[previousDayIndex];
+      } else if (localHours >= 24) {
+        localHours -= 24;
+        const currentDayIndex = DAYS_OF_WEEK.indexOf(day);
+        const nextDayIndex = (currentDayIndex + 1) % 7;
+        adjustedDay = DAYS_OF_WEEK[nextDayIndex];
+      }
+
+      // Format to 12-hour time
+      const period = localHours >= 12 ? "PM" : "AM";
+      const hours12 = localHours % 12 || 12;
+      const formattedTime = `${hours12}:${minutes
+        .toString()
+        .padStart(2, "0")} ${period}`;
+
+      return `${adjustedDay}, ${formattedTime} (${userTimezone})`;
+    } catch (error) {
+      console.error("Error formatting broadcast time:", error);
+      return "Time conversion error";
+    }
+  };
+
   const handleLogin = async () => {
     try {
       const user = await signInWithGoogle();
       setUser(user);
-      // Here you would typically fetch the user's subscriptions from your backend
-      // and update the subscriptions state
     } catch (error) {
       console.error("Login failed", error);
     }
@@ -83,40 +157,6 @@ export function AiringAnimeSchedule() {
     }
   };
 
-  const formatBroadcastTime = (day: string, time: string, timezone: string) => {
-    if (!day || !time || !timezone) {
-      return "N/A";
-    }
-    const [hours, minutes] = time.split(":").map(Number);
-    let etHours = hours - 14;
-    // Adjust day if time goes into previous day
-    let adjustedDay = day;
-    if (etHours < 0) {
-      etHours += 24; // Normalize hours to 0-23 range
-      // Get previous day
-      const days = [
-        "Sundays",
-        "Mondays",
-        "Tuesdays",
-        "Wednesdays",
-        "Thursdays",
-        "Fridays",
-        "Saturdays",
-      ];
-      const currentDayIndex = days.indexOf(day);
-      const previousDayIndex = (currentDayIndex - 1 + 7) % 7;
-      adjustedDay = days[previousDayIndex];
-    }
-
-    // Format the time to 12-hour format with AM/PM
-    const period = etHours >= 12 ? "PM" : "AM";
-    const hours12 = etHours % 12 || 12; // Convert to 12-hour format
-    const formattedTime = `${hours12}:${minutes
-      .toString()
-      .padStart(2, "0")} ${period}`;
-    return `${adjustedDay}, ${formattedTime} ET`;
-  };
-
   if (isLoading) {
     return (
       <div className="container mx-auto p-4">
@@ -128,7 +168,7 @@ export function AiringAnimeSchedule() {
                 <Skeleton className="h-4 w-2/3" />
               </CardHeader>
               <CardContent>
-                <Skeleton className="h-[200px] w-full mb-2" />
+                <Skeleton className="h-48 w-full mb-2" />
                 <Skeleton className="h-4 w-full" />
               </CardContent>
             </Card>
@@ -167,7 +207,7 @@ export function AiringAnimeSchedule() {
               <img
                 src={anime.images.jpg.image_url}
                 alt={anime.title}
-                className="w-full h-[200px] object-cover rounded-md mb-2"
+                className="w-full h-48 object-cover rounded-md mb-2"
               />
               <p className="text-sm text-muted-foreground mb-2">
                 Airs:{" "}
@@ -199,9 +239,9 @@ export function AiringAnimeSchedule() {
                   }
                 >
                   {subscriptions.has(anime.mal_id) ? (
-                    <BellOff size={16} />
+                    <BellOff className="h-4 w-4 mr-2" />
                   ) : (
-                    <Bell size={16} />
+                    <Bell className="h-4 w-4 mr-2" />
                   )}
                   {subscriptions.has(anime.mal_id)
                     ? "Unsubscribe"
